@@ -46,7 +46,7 @@ def subplots(nrows=1, ncols=1, proj=None, proj_kw=None,
     fig = plt.figure(figsize=figsize)
     gs = GridSpec(nrows, ncols, figure=fig,
                   wspace=wspace, hspace=hspace,
-                  width_ratios=wratios, height_ratios=hratios
+                  width_ratios=wratios, height_ratios=hratios,
                   )
 
     if regular_grid:
@@ -66,8 +66,8 @@ def subplots(nrows=1, ncols=1, proj=None, proj_kw=None,
         for i in range(nrows):
             for j in range(ncols):
                 axs[i][j] = fig.add_subplot(gs[i, j],
-                                            projection=projs[i * ncols + j])
-                # axs[i][j].proj =
+                                            projection=projs[i*ncols+j],)
+
         if nrows == 1 or ncols==1:
             axs = axs.flatten()
         return fig, axs
@@ -83,9 +83,11 @@ def formats(axs, labels=True, geo=False,
             coastwidth=1.0, coastcolor='silver',
             ltitle=None, rtitle=None, title=None,
             latlim=None, lonlim=None, latloc=None, lonloc=None,
+            xlim=None, ylim=None,
             xticks=None, yticks=None,
             grid=True, gridline_kw=None,
             land_kw=None, river_kw=None, lake_kw=None,
+            sharex=False, sharey=False,
             **kwargs):
 
     # title_kw = {key: kwargs[key] for key in ('ltitle', 'rtitle', 'title')
@@ -99,6 +101,11 @@ def formats(axs, labels=True, geo=False,
         # 'landcolor':landcolor, 'rivercolor':watercolor, 'lakecolor':watercolor,
         'labels':labels, 'grid':grid, 'gridline_kw':gridline_kw,
         'land_kw':land_kw, 'river_kw':river_kw, 'lake_kw':lake_kw,
+        'sharex':sharex, 'sharey':sharey,
+    }
+
+    xytick_kw = {
+        'xlim':xlim, 'ylim':ylim, 'sharex':sharex, 'sharey':sharey,
     }
 
     if type(axs) is np.ndarray:
@@ -119,9 +126,13 @@ def formats(axs, labels=True, geo=False,
         for ax in axs.flat:
             if geo and type(ax) is cartopy.mpl.geoaxes.GeoAxes:
                 geoticks(ax, **geotick_kw)
+            else:
+                xyticks(ax, **xytick_kw)
     else:
         if geo and type(axs) is cartopy.mpl.geoaxes.GeoAxes:
             geoticks(axs, **geotick_kw)
+        else:
+            xyticks(axs, **xytick_kw)
 
 
 def geoticks(ax, labels=False, labelsize='large',
@@ -132,7 +143,8 @@ def geoticks(ax, labels=False, labelsize='large',
              xticks=None, yticks=None, boundinglat=None,
              # len_major=0, len_minor=0,
              grid=True, gridline_kw=None,
-             land_kw=None, river_kw=None, lake_kw=None,):
+             land_kw=None, river_kw=None, lake_kw=None,
+             sharex=False, sharey=False):
 
     assert reso in ['high', 'med', 'low']
     reso_dict = {'high':'10m', 'med':'50m', 'low':'110m'}
@@ -229,6 +241,17 @@ def geoticks(ax, labels=False, labelsize='large',
             gl.bottom_labels = True
             # gl.xlabel_style = {'size': 10}
             # gl.ylabel_style = {'size': 10}
+
+            subplotspec = ax.get_subplotspec()
+            gridspec = subplotspec.get_gridspec()
+            # 获取行数和列数
+            nrows, ncols = gridspec.get_geometry()
+            row, col = subplotspec.rowspan.start, subplotspec.colspan.start
+            if sharex and row != nrows - 1:
+                gl.bottom_labels = False
+            if sharey and col != 0:
+                gl.left_labels = False
+
         if boundinglat is not None:
             gl.xlabel_style = {'rotation': 0}  # 标签水平放置
             gl.y_inline = False
@@ -253,6 +276,25 @@ def geoticks(ax, labels=False, labelsize='large',
 #         raise ValueError('No Latitude!')
 #
 #     return lon, lat
+
+
+def xyticks(ax, xlim=None, ylim=None, sharex=False, sharey=False, ):
+
+    if xlim is not None:
+        ax.set_xlim(*xlim)
+    if ylim is not None:
+        ax.set_ylim(*ylim)
+
+    subplotspec = ax.get_subplotspec()
+    gridspec = subplotspec.get_gridspec()
+    # 获取行数和列数
+    nrows, ncols = gridspec.get_geometry()
+    row, col = subplotspec.rowspan.start, subplotspec.colspan.start
+    print(nrows, ncols, row, col)
+    if sharex and row != nrows - 1:
+        ax.tick_params('x', labelbottom=False)
+    if sharey and col != 0:
+        ax.tick_params('y', labelleft=False)
 
 
 def contourf(ax, var, x=None, y=None, levels=None, cmap='RdBu_r', extend='both', zorder=0,
@@ -498,3 +540,57 @@ def generate_multiples(base_num, start, end):
     loc = np.where((all_multiples>=start) & (all_multiples<=end))[0]
     return all_multiples[loc]
 
+
+#%%
+#
+# fig, axs = subplots(nrows=2, ncols=2, figsize=(6, 6),
+#                     # proj=('cyl', None) * 2,
+#                     proj=('npstere', None, 'cyl', None),
+#                     proj_kw={'central_longitude':90},
+#                     hspace=0.5, wratios=(2,1))
+#
+# formats(axs, abc='a)')
+# formats(axs[0,0], ltitle='hhh', geo=True, labels=True, land=True, coast=False,
+#         boundinglat=45, latloc=15)
+# formats(axs[0,1], rtitle='hhh')
+# formats(axs[1,0], title='hhh', latlim=(-20, 80), lonlim=(40, 180), lonloc=40,
+#         reso='med', lake=True, river=True)
+# # formats(axs[:, 0], labels=True, grid=True)
+#
+# plt.show()
+#
+# #%%
+#
+# import xarray as xr
+#
+# f = xr.open_dataset('data/u.mon.mean.nc')
+# data = f['u'][6].loc[200]
+# lat, lon = data.latitude, data.longitude
+#
+# fig, axs = subplots(ncols=2, nrows=2, figsize=(10, 6),
+#                     proj='cyl', proj_kw={'central_longitude': 180},)
+# formats(axs, abc='(a)', sharex=True, sharey=True)
+# ax1 = axs[0,0]
+# ax2 = axs[0,1]
+#
+# # ax1.contourf(lon, lat, data, levels=np.linspace(-40, 40, 21), cmap='RdBu_r',
+# #              extend='both', zorder=0,
+# #              transform=ccrs.PlateCarree())
+# pic = contourf(ax1, data, levels=np.linspace(-40, 40, 21), cmap='RdBu_r',
+#                extend='both')
+# pic = contourf(ax2, data, levels=np.linspace(-40, 40, 21), cmap='RdBu_r',
+#                extend='both')
+# addcolorbar([ax1, ax2], pic, blank=False, loc='b', shrink=0.6, pad=0.15,
+#             aspect=30, ticks=8)
+# # addcolorbar(ax1, pic, blank=True, loc='r')
+# # addcolorbar(ax2, pic, blank=True, loc='r')
+#
+# # plt.tight_layout()
+# plt.show()
+# fig.savefig('figures/pic1.png', bbox_inches='tight', dpi=300)
+
+# https://matplotlib.org/stable/gallery/mplot3d/view_planes_3d.html#sphx-glr-gallery-mplot3d-view-planes-3d-py
+
+# fig, axs = subplots(2,2, figsize=(6, 6))
+# formats(axs, xlim=(1, 10), ylim=(5, 15), sharex=True, sharey=True)
+# plt.show()
