@@ -76,15 +76,18 @@ def subplots(nrows=1, ncols=1, proj=None, proj_kw=None,
         return fig, gs
 
 
-def formats(axs, labels=True, geo=False,
-            abc=None, abcloc='left', titlesize='large', labelsize='large',
+def formats(axs, labels=True, geo=False, order='C',
+            abc=None, abcloc='left', titlesize='large',
             boundinglat=None,
             coast=True, land=False, river=False, lake=False, reso='low',
             coastwidth=1.0, coastcolor='silver',
             ltitle=None, rtitle=None, title=None,
+            toplabels=None, toplabels_kw=None,
             latlim=None, lonlim=None, latloc=None, lonloc=None,
             xlim=None, ylim=None,
-            xticks=None, yticks=None,
+            xticks=None, yticks=None, xticklabels=None, yticklabels=None,
+            xlabel=None, ylabel=None, labelsize='large',
+            xminor=None, yminor=None, xtick_params=None, ytick_params=None,
             grid=True, gridline_kw=None,
             land_kw=None, river_kw=None, lake_kw=None,
             sharex=False, sharey=False,
@@ -105,12 +108,16 @@ def formats(axs, labels=True, geo=False,
     }
 
     xytick_kw = {
+        'xticks':xticks, 'yticks':yticks, 'xminor':xminor, 'yminor':yminor,
+        'xticklabels':xticklabels, 'yticklabels':yticklabels, 'labelsize':labelsize,
         'xlim':xlim, 'ylim':ylim, 'sharex':sharex, 'sharey':sharey,
+        'xlabel':xlabel, 'ylabel':ylabel,
+        'xtick_params':xtick_params, 'ytick_params':ytick_params,
     }
 
     if type(axs) is np.ndarray:
         if abc is not None:
-            addabc(axs, abc, abcloc)
+            addabc(axs, abc, abcloc, order)
 
     if ltitle is not None:
         addtitle(axs, ltitle, loc='left', fontsize=titlesize)
@@ -119,8 +126,18 @@ def formats(axs, labels=True, geo=False,
     if title is not None:
         addtitle(axs, title, loc='center', fontsize=titlesize)
 
-    if 'latlim' in geotick_kw or 'lonlim' in geotick_kw:
-        geo = True
+    if toplabels is not None:
+        assert len(toplabels) == axs.shape[-1]
+        if toplabels_kw is None:
+            toplabels_kw = {'y':1.2, 'fontsize':'large'}
+        for i, ax in enumerate(axs[0, :]):
+            ax.text(x=0.5, s=toplabels[i], transform=ax.transAxes,
+                    ha='center', **toplabels_kw)
+            # ha: horizonta lalignment {'left', 'center', 'right'}
+            # fontweight='bold'
+
+    # if 'latlim' in geotick_kw or 'lonlim' in geotick_kw:
+    #     geo = True
 
     if type(axs) is np.ndarray:
         for ax in axs.flat:
@@ -278,23 +295,68 @@ def geoticks(ax, labels=False, labelsize='large',
 #     return lon, lat
 
 
-def xyticks(ax, xlim=None, ylim=None, sharex=False, sharey=False, ):
+def xyticks(ax, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
+            xlim=None, ylim=None, sharex=False, sharey=False,
+            xlabel=None, ylabel=None, labelsize='large', # xrotation=0, yrotation=0,
+            xminor=None, yminor=None, xtick_params=None, ytick_params=None):
 
     if xlim is not None:
         ax.set_xlim(*xlim)
     if ylim is not None:
         ax.set_ylim(*ylim)
 
+    x_limits = ax.get_xlim()
+    y_limits = ax.get_ylim()
+    if type(xticks) in [int, float]:
+        xticks = generate_multiples(xticks, start=x_limits[0], end=x_limits[1])
+    if type(yticks) in [int, float]:
+        yticks = generate_multiples(yticks, start=y_limits[0], end=y_limits[1])
+
+    if xtick_params is None:
+        xtick_params = {}
+    if ytick_params is None:
+        ytick_params = {}
+
+    xticks_kw, yticks_kw = {}, {}
+    xticks_dict = {'xticks':'ticks', 'xticklabels':'labels'}
+    yticks_dict = {'yticks':'ticks', 'yticklabels':'labels'}
+
+    # 遍历函数的所有参数
+    for key, value in locals().items():
+        if key in xticks_dict.keys() and value is not None:
+            xticks_kw[xticks_dict[key]] = value
+        if key in yticks_dict.keys() and value is not None:
+            yticks_kw[yticks_dict[key]] = value
+
+    if xticks_kw != {}:
+        ax.set_xticks(**xticks_kw)
+    if yticks_kw != {}:
+        ax.set_yticks(**yticks_kw)
+
+    if xlabel is not None:
+        ax.set_xlabel(xlabel, fontsize=labelsize)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel, fontsize=labelsize)
+
     subplotspec = ax.get_subplotspec()
     gridspec = subplotspec.get_gridspec()
     # 获取行数和列数
     nrows, ncols = gridspec.get_geometry()
     row, col = subplotspec.rowspan.start, subplotspec.colspan.start
-    print(nrows, ncols, row, col)
     if sharex and row != nrows - 1:
         ax.tick_params('x', labelbottom=False)
+        ax.set_xlabel(None)
     if sharey and col != 0:
         ax.tick_params('y', labelleft=False)
+        ax.set_ylabel(None)
+
+    ax.tick_params(axis='x', **xtick_params)  # , rotation=xrotation
+    ax.tick_params(axis='y', **ytick_params)
+
+    if xminor is not None or yminor is not None:
+        ax.minorticks_on()
+        ax.xaxis.set_minor_locator(None if xminor is None else AutoMinorLocator())
+        ax.yaxis.set_minor_locator(None if yminor is None else AutoMinorLocator())
 
 
 def contourf(ax, var, x=None, y=None, levels=None, cmap='RdBu_r', extend='both', zorder=0,
@@ -427,8 +489,18 @@ def addcolorbar(fig, m, ticks=None, loc='b', shrink=1., blank=False,
 
     loc_dict = {'b':'bottom', 't':'top', 'l':'left', 'r':'right'}
 
-    if type(fig) == cartopy.mpl.geoaxes.GeoAxes:
+    condition = False
+    if isinstance(fig, cartopy.mpl.geoaxes.GeoAxes):
+        condition = True
         bbox = fig.get_position()
+    else:
+        if isinstance(fig, np.ndarray):
+            if isinstance(fig.flatten()[0], cartopy.mpl.geoaxes.GeoAxes):
+                condition = True
+                bbox = fig.flatten()[0].get_position()
+
+    if condition:
+        # bbox = fig.get_position()
         if blank:
             if loc in ['b', 't']:
                 shrink_coef = bbox.width
@@ -450,14 +522,18 @@ def addcolorbar(fig, m, ticks=None, loc='b', shrink=1., blank=False,
     if pad is None:
         pad = 0.15 if loc in ['b', 't'] else 0.05
         pad *= pad_coef
-        print('pad = ' + str(pad))
+        # print('pad = ' + str(pad))
 
     if ticks is None and hasattr(m, 'levels'):
         ticks = m.levels
     else:
         if type(ticks) in [int, float]:
             # ticks = np.arange(m.levels.min(), m.levels.max(), ticks)
-            ticks = generate_multiples(ticks, m.levels.min(), m.levels.max())
+            if hasattr(m, 'levels'):
+                ticks = generate_multiples(ticks, m.levels.min(), m.levels.max())
+            else:
+                vmin, vmax = m.get_clim()
+                ticks = generate_multiples(ticks, vmin, vmax)
         else:
             pass
 
@@ -498,7 +574,45 @@ def addcolorbar(fig, m, ticks=None, loc='b', shrink=1., blank=False,
     cb.minorticks_off()
 
 
-def addabc(axs, abc, abcloc):
+def addchina(ax, ec='k', lw=0.5, province=False, scs=False, scs_domain=None, scs_ax_pos=None,
+             dir_china=None):
+
+    if province:
+        import cartopy.io.shapereader as shpreader
+        if dir_china is None:
+            dir_china = r'D:\research\data\china-shapefiles\bou2_4m\bou2_4l.shp'
+        # self.ax.add_feature(cfeat.RIVERS.with_scale('50m'), linewidth=1.5)
+        china = shpreader.Reader(dir_china).geometries()
+        plot_obj = china
+        ax.add_geometries(plot_obj, fc='none', crs=ccrs.PlateCarree(), ec=ec, lw=lw)  # ax.projection
+    else:
+        import geopandas as gpd
+        if dir_china is None:
+            dir_china = r'D:\research\data\china-shapefiles\aliyun\shp\china_country/china_country.shp'
+        china = gpd.read_file(dir_china)
+        plot_obj = china.geometry[china['type'].isin(['国界', '争议', '港澳'])]
+        ax.add_geometries(plot_obj, crs=ccrs.PlateCarree(),
+                          facecolor='none', ec=ec, lw=lw, zorder=99)  # '海洋', '省界'  # ccrs.PlateCarree()
+
+    if scs:
+        if scs_domain is None:
+            scs_domain = [105, 125, 0, 25]
+        if scs_ax_pos is None:
+            scs_ax_pos = [0.8, 0.05, 0.25, 0.35]
+        # if scs_line_kw is None:
+        #     scs_line_kw = {'edgecolor':'k', 'linewidth':.3}
+        # if scs_ax_kw is None:
+        #     scs_ax_kw = {'coast':True, 'grid':False}  # 'reso':'med',
+        ax2 = ax.inset_axes(scs_ax_pos)
+        ax2.set_extent(scs_domain, crs=ccrs.PlateCarree())
+        ax2.format(grid=False)  # **scs_ax_kw
+        ax2.add_geometries(plot_obj, crs=ccrs.PlateCarree(), facecolor='none', ec=ec, lw=lw)
+
+        return ax2
+
+
+def addabc(axs, abc, abcloc, order='C'):
+    assert order in ['C', 'F']
     abc_formats = {
         '(a)': "({})",
         'a)': "{})",
@@ -510,7 +624,8 @@ def addabc(axs, abc, abcloc):
     if abc not in abc_formats:
         raise ValueError('This type of abc is not supported!')
 
-    for i, ax in enumerate(axs.flat):
+    axs_flat = axs.flatten(order=order) if order == 'F' else axs.flat
+    for i, ax in enumerate(axs_flat):
         ax.set_title(abc_formats[abc].format(chr(start_letter + i)), loc=abcloc)
 
 
@@ -541,56 +656,3 @@ def generate_multiples(base_num, start, end):
     return all_multiples[loc]
 
 
-#%%
-#
-# fig, axs = subplots(nrows=2, ncols=2, figsize=(6, 6),
-#                     # proj=('cyl', None) * 2,
-#                     proj=('npstere', None, 'cyl', None),
-#                     proj_kw={'central_longitude':90},
-#                     hspace=0.5, wratios=(2,1))
-#
-# formats(axs, abc='a)')
-# formats(axs[0,0], ltitle='hhh', geo=True, labels=True, land=True, coast=False,
-#         boundinglat=45, latloc=15)
-# formats(axs[0,1], rtitle='hhh')
-# formats(axs[1,0], title='hhh', latlim=(-20, 80), lonlim=(40, 180), lonloc=40,
-#         reso='med', lake=True, river=True)
-# # formats(axs[:, 0], labels=True, grid=True)
-#
-# plt.show()
-#
-# #%%
-#
-# import xarray as xr
-#
-# f = xr.open_dataset('data/u.mon.mean.nc')
-# data = f['u'][6].loc[200]
-# lat, lon = data.latitude, data.longitude
-#
-# fig, axs = subplots(ncols=2, nrows=2, figsize=(10, 6),
-#                     proj='cyl', proj_kw={'central_longitude': 180},)
-# formats(axs, abc='(a)', sharex=True, sharey=True)
-# ax1 = axs[0,0]
-# ax2 = axs[0,1]
-#
-# # ax1.contourf(lon, lat, data, levels=np.linspace(-40, 40, 21), cmap='RdBu_r',
-# #              extend='both', zorder=0,
-# #              transform=ccrs.PlateCarree())
-# pic = contourf(ax1, data, levels=np.linspace(-40, 40, 21), cmap='RdBu_r',
-#                extend='both')
-# pic = contourf(ax2, data, levels=np.linspace(-40, 40, 21), cmap='RdBu_r',
-#                extend='both')
-# addcolorbar([ax1, ax2], pic, blank=False, loc='b', shrink=0.6, pad=0.15,
-#             aspect=30, ticks=8)
-# # addcolorbar(ax1, pic, blank=True, loc='r')
-# # addcolorbar(ax2, pic, blank=True, loc='r')
-#
-# # plt.tight_layout()
-# plt.show()
-# fig.savefig('figures/pic1.png', bbox_inches='tight', dpi=300)
-
-# https://matplotlib.org/stable/gallery/mplot3d/view_planes_3d.html#sphx-glr-gallery-mplot3d-view-planes-3d-py
-
-# fig, axs = subplots(2,2, figsize=(6, 6))
-# formats(axs, xlim=(1, 10), ylim=(5, 15), sharex=True, sharey=True)
-# plt.show()
