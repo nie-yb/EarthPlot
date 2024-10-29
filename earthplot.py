@@ -14,6 +14,7 @@ import cartopy.crs as ccrs
 import cartopy.io.shapereader as shpreader
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 import cartopy.feature as cfeat
+from cartopy.util import add_cyclic_point
 from pyproj import proj
 lon_formatter = LongitudeFormatter(zero_direction_label=False)
 lat_formatter = LatitudeFormatter()
@@ -41,6 +42,7 @@ def subplots(nrows=1, ncols=1, proj=None, proj_kw=None,
         'cyl': ccrs.PlateCarree(**proj_kw),
         'robin': ccrs.Robinson(**proj_kw),
         'npstere': ccrs.NorthPolarStereo(**proj_kw),  # central_longitude=90
+        '3d':'3d',
     }
 
     fig = plt.figure(figsize=figsize)
@@ -84,7 +86,7 @@ def formats(axs, labels=True, geo=False, order='C',
             ltitle=None, rtitle=None, title=None,
             toplabels=None, toplabels_kw=None,
             latlim=None, lonlim=None, latloc=None, lonloc=None,
-            xlim=None, ylim=None,
+            xlim=None, ylim=None, zlim=None,
             xticks=None, yticks=None, xticklabels=None, yticklabels=None,
             xlabel=None, ylabel=None, labelsize='large',
             xminor=None, yminor=None, xtick_params=None, ytick_params=None,
@@ -110,7 +112,7 @@ def formats(axs, labels=True, geo=False, order='C',
     xytick_kw = {
         'xticks':xticks, 'yticks':yticks, 'xminor':xminor, 'yminor':yminor,
         'xticklabels':xticklabels, 'yticklabels':yticklabels, 'labelsize':labelsize,
-        'xlim':xlim, 'ylim':ylim, 'sharex':sharex, 'sharey':sharey,
+        'xlim':xlim, 'ylim':ylim, 'zlim':zlim, 'sharex':sharex, 'sharey':sharey,
         'xlabel':xlabel, 'ylabel':ylabel,
         'xtick_params':xtick_params, 'ytick_params':ytick_params,
     }
@@ -296,7 +298,7 @@ def geoticks(ax, labels=False, labelsize='large',
 
 
 def xyticks(ax, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
-            xlim=None, ylim=None, sharex=False, sharey=False,
+            xlim=None, ylim=None, zlim=None, sharex=False, sharey=False,
             xlabel=None, ylabel=None, labelsize='large', # xrotation=0, yrotation=0,
             xminor=None, yminor=None, xtick_params=None, ytick_params=None):
 
@@ -304,6 +306,8 @@ def xyticks(ax, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
         ax.set_xlim(*xlim)
     if ylim is not None:
         ax.set_ylim(*ylim)
+    if zlim is not None:
+        ax.set_zlim(*zlim)
 
     x_limits = ax.get_xlim()
     y_limits = ax.get_ylim()
@@ -359,14 +363,17 @@ def xyticks(ax, xticks=None, yticks=None, xticklabels=None, yticklabels=None,
         ax.yaxis.set_minor_locator(None if yminor is None else AutoMinorLocator())
 
 
-def contourf(ax, var, x=None, y=None, levels=None, cmap='RdBu_r', extend='both', zorder=0,
-             **kwargs):  # globe=False,
+def contourf(ax, data, x=None, y=None, levels=None, cmap='RdBu_r', extend='both', zorder=0,
+             globe=False, **kwargs):  #
 
     if (x is None) & (y is None):
-        dims = var.dims
-        x, y = var[dims[-1]], var[dims[-2]]
+        dims = data.dims
+        x, y = data[dims[-1]], data[dims[-2]]
 
-    pic = ax.contourf(x, y, var, levels=levels, cmap=cmap,
+    if globe:
+        data, x = add_cyclic_point(data, coord=x)
+
+    pic = ax.contourf(x, y, data, levels=levels, cmap=cmap,
                       extend=extend, transform=ccrs.PlateCarree(),
                       zorder=zorder, **kwargs)
     return pic
@@ -433,14 +440,17 @@ def vector(ax, vx, vy, x=None, y=None, width=None, headwidth=3.,
     return flux
 
 
-def contour(ax, var, x=None, y=None, level=None, color='k', lw=1.5, ls=None,
-            clabel=False, fs='small', space=2, fmt='%1.1f', **kwargs):
+def contour(ax, data, x=None, y=None, level=None, color='k', lw=1.5, ls=None,
+            clabel=False, fs='small', space=2, fmt='%1.1f', globe=False, **kwargs):
 
     if (x is None) or (y is None):
-        dims = var.dims
-        x, y = var[dims[-1]], var[dims[-2]]
+        dims = data.dims
+        x, y = data[dims[-1]], data[dims[-2]]
 
-    pic = ax.contour(x, y, var, levels=level, colors=color, linewidths=lw,
+    if globe:
+        data, x = add_cyclic_point(data, coord=x)
+
+    pic = ax.contour(x, y, data, levels=level, colors=color, linewidths=lw,
                      linestyles=ls, **kwargs)
     if clabel:
         ax.clabel(pic, inline=True, fontsize=fs, fmt=fmt, inline_spacing=space)
