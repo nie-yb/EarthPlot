@@ -167,8 +167,9 @@ def geoticks(ax, labels=False, labelsize='large',
     assert reso in ['high', 'med', 'low']
     reso_dict = {'high':'10m', 'med':'50m', 'low':'110m'}
 
-    gridline_default = {'linestyle': '--', 'linewidth': 0.8, 'alpha': 0.8,
-                        'xpadding':tickpad, 'ypadding':tickpad,
+    gridline_default = {'linestyle': '--', 'linewidth': 0.8, 'alpha': 0.5,
+                        'xpadding':tickpad, 'ypadding':tickpad, 'rotate_labels':False,
+                        'crs': ccrs.PlateCarree(),
                         }
     river_default = {'linewidth':0.8, 'alpha':1.} # zorder=0
     lake_default = {'linewidth':0.7, 'alpha':1., 'edgecolor':'silver',
@@ -245,17 +246,18 @@ def geoticks(ax, labels=False, labelsize='large',
 
     if lake:
         ax.add_feature(cfeat.LAKES.with_scale('110m'), **lake_kw)
-
+    
+    is_polar = isinstance(ax.projection, (ccrs.NorthPolarStereo, ccrs.SouthPolarStereo))
     ##----Add gridlines
-    if grid & ~hasattr(ax, 'grid_and_label'):
+    if grid and not hasattr(ax, 'grid_and_label'):
         # ax.grid(True, which='major')  # , draw_labels=False
         gl = ax.gridlines(draw_labels=labels, **gridline_kw)
         gl.xlocator = mticker.FixedLocator(xticks)
         gl.ylocator = mticker.FixedLocator(yticks)
         if labels:
             gl.left_labels = True
-            gl.right_labels = False
-            gl.top_labels = False
+            gl.right_labels = True if is_polar else False
+            gl.top_labels = True if is_polar else False
             gl.bottom_labels = True
             # gl.xlabel_style = {'size': 10}
             # gl.ylabel_style = {'size': 10}
@@ -271,7 +273,7 @@ def geoticks(ax, labels=False, labelsize='large',
                 gl.left_labels = False
 
         if boundinglat is not None:
-            gl.xlabel_style = {'rotation': 0}  # 标签水平放置
+            # gl.xlabel_style = {'rotation': 0}  # 标签水平放置
             gl.y_inline = False
 
         ax.grid_and_label = True
