@@ -452,7 +452,7 @@ def contour(ax, data, x=None, y=None, level=None, color='k', lw=1.5, ls=None,
         data, x = add_cyclic_point(data, coord=x)
 
     pic = ax.contour(x, y, data, levels=level, colors=color, linewidths=lw,
-                     linestyles=ls, **kwargs)
+                     linestyles=ls, transform=ccrs.PlateCarree(), **kwargs)
     if clabel:
         ax.clabel(pic, inline=True, fontsize=fs, fmt=fmt, inline_spacing=space)
 
