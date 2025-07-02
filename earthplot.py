@@ -81,7 +81,7 @@ def formats(axs, labels=True, geo=False, order='C',
             abc=None, abcloc='left', titlesize='large',
             boundinglat=None,
             coast=True, land=False, river=False, lake=False, reso='low',
-            coastwidth=1.0, coastcolor='silver',
+            coastwidth=1.0, coastcolor='darkgray',
             ltitle=None, rtitle=None, title=None,
             toplabels=None, toplabels_kw=None,
             latlim=None, lonlim=None, latloc=None, lonloc=None,
@@ -154,7 +154,7 @@ def formats(axs, labels=True, geo=False, order='C',
 
 
 def geoticks(ax, labels=False, labelsize='large',
-             coast=True, coastcolor='silver', coastwidth=1.0, reso='low',
+             coast=True, coastcolor='darkgray', coastwidth=1.0, reso='low',
              land=False, river=False, lake=False,
              # borders:bool=False,
              latlim=None, lonlim=None, latloc=None, lonloc=None,
@@ -172,7 +172,7 @@ def geoticks(ax, labels=False, labelsize='large',
                         'crs': ccrs.PlateCarree(),
                         }
     river_default = {'linewidth':0.8, 'alpha':1.} # zorder=0
-    lake_default = {'linewidth':0.7, 'alpha':1., 'edgecolor':'silver',
+    lake_default = {'linewidth':0.7, 'alpha':1., 'edgecolor':'darkgray',
                     'facecolor':'none'} # zorder=0, default: cfeat.COLORS['water']
 
     if gridline_kw is None:
@@ -182,7 +182,7 @@ def geoticks(ax, labels=False, labelsize='large',
 
     river_kw = river_default if river_kw is None else {**river_default, **river_kw}
     lake_kw = lake_default if lake_kw is None else {**lake_default, **lake_kw}
-    land_kw = {'facecolor':'silver'} if land_kw is None else land_kw  #
+    land_kw = {'facecolor':'darkgray'} if land_kw is None else land_kw  #
 
     # lon1, lon2 = (0, 360) if ax.projection._proj4_params['lon_0']==180 else (-180, 180)
     latlower, latupper = (-90, 90) if latlim is None else latlim
@@ -420,11 +420,11 @@ def plt_sig(ax, sig, x=None, y=None, pvalue=0.05, hatches='..', color='k',
         if method == 1:
             plt.rcParams['hatch.color'] = color
             ax.contourf(x, y, sig, levels=[np.nanmin(sig), pvalue, np.nanmax(sig)],
-                        zorder=zorder, hatches=[hatches, None], colors="none", transform=ccrs.PlateCarree())
+                        zorder=zorder, hatches=[hatches, None], colors="none")
         else:
             nx, ny = np.meshgrid(x, y)
             ax.scatter(nx[sig < pvalue], ny[sig < pvalue], marker='.', s=size,
-                       c=color, alpha=alpha, zorder=zorder, transform=ccrs.PlateCarree())
+                       c=color, alpha=alpha, zorder=zorder)
     else:
         pass
 
@@ -468,7 +468,7 @@ def addquiver(ax, flux, x, y, u, unit=None, labelpos='N', labelsep=0.05,
                  coordinates=coordinates, fontproperties={'size': size})
 
 
-def addpatch(ax, domain, proj=None, ec='k', lw=0.5, ls='-', **kwargs):
+def addpatch(ax, domain, proj=None, ec='k', lw=0.5):
 
     if proj is None:
         proj = ax.projection
@@ -479,13 +479,13 @@ def addpatch(ax, domain, proj=None, ec='k', lw=0.5, ls='-', **kwargs):
 
     if (type(proj) is ccrs.PlateCarree) | (proj=='cyl'):
         path = patches.Rectangle((lonmin, latmin), lonmax-lonmin, latmax-latmin,
-                                 edgecolor=ec, fill=False, lw=lw, ls=ls,
-                                 transform=ccrs.PlateCarree(), zorder=99, **kwargs)
+                                 edgecolor=ec, fill=False, lw=lw,
+                                 transform=ccrs.PlateCarree(), zorder=99)
     else:
         vertices = [(lon, latmin) for lon in lon_span] + \
             [(lon, latmax) for lon in lon_span[::-1]]
-        path = patches.Polygon(np.array(vertices), edgecolor=ec, fill=False, lw=lw, ls=ls,
-                               transform=ccrs.PlateCarree(), zorder=99, **kwargs)
+        path = patches.Polygon(np.array(vertices), edgecolor=ec, fill=False, lw=lw,
+                               transform=ccrs.PlateCarree(), zorder=99)
     ax.add_patch(path)
 
 
