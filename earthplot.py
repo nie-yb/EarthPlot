@@ -420,11 +420,11 @@ def plt_sig(ax, sig, x=None, y=None, pvalue=0.05, hatches='..', color='k',
         if method == 1:
             plt.rcParams['hatch.color'] = color
             ax.contourf(x, y, sig, levels=[np.nanmin(sig), pvalue, np.nanmax(sig)],
-                        zorder=zorder, hatches=[hatches, None], colors="none")
+                        zorder=zorder, hatches=[hatches, None], colors="none", transform=ccrs.PlateCarree())
         else:
             nx, ny = np.meshgrid(x, y)
             ax.scatter(nx[sig < pvalue], ny[sig < pvalue], marker='.', s=size,
-                       c=color, alpha=alpha, zorder=zorder)
+                       c=color, alpha=alpha, zorder=zorder, transform=ccrs.PlateCarree())
     else:
         pass
 
@@ -468,7 +468,7 @@ def addquiver(ax, flux, x, y, u, unit=None, labelpos='N', labelsep=0.05,
                  coordinates=coordinates, fontproperties={'size': size})
 
 
-def addpatch(ax, domain, proj=None, ec='k', lw=0.5):
+def addpatch(ax, domain, proj=None, ec='k', lw=0.5, ls='-'):
 
     if proj is None:
         proj = ax.projection
@@ -479,12 +479,12 @@ def addpatch(ax, domain, proj=None, ec='k', lw=0.5):
 
     if (type(proj) is ccrs.PlateCarree) | (proj=='cyl'):
         path = patches.Rectangle((lonmin, latmin), lonmax-lonmin, latmax-latmin,
-                                 edgecolor=ec, fill=False, lw=lw,
+                                 edgecolor=ec, fill=False, lw=lw, ls=ls,
                                  transform=ccrs.PlateCarree(), zorder=99)
     else:
         vertices = [(lon, latmin) for lon in lon_span] + \
             [(lon, latmax) for lon in lon_span[::-1]]
-        path = patches.Polygon(np.array(vertices), edgecolor=ec, fill=False, lw=lw,
+        path = patches.Polygon(np.array(vertices), edgecolor=ec, fill=False, lw=lw, ls=ls,
                                transform=ccrs.PlateCarree(), zorder=99)
     ax.add_patch(path)
 
